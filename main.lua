@@ -169,8 +169,13 @@ function Graphics.drawTile( tile, x, y )
     math.floor(x*ys)/ys, math.floor(y*ys)/ys )
 end
 
-function Graphics.drawTiledRectangle( tile, x, y, w, h )
-  local ys, xs
+function Graphics.setColorDepth( depth )
+  local x = 31 + (255-31) * depth
+  love.graphics.setColor( x, x, x )
+end
+
+function Graphics.drawTiledRectangle( tile, x, y, w, h, depth )
+  Graphics.setColorDepth( depth or 1.0 )
   for ys = y, y+h-1, 8 do
     for xs = x, x+w-1, 8 do
       Graphics.drawTile( tile, xs, ys )
@@ -178,8 +183,8 @@ function Graphics.drawTiledRectangle( tile, x, y, w, h )
   end
 end
 
-function Graphics.drawCappedColumn( tile, top, bottom, x, y, h )
-  local ys
+function Graphics.drawCappedColumn( tile, top, bottom, x, y, h, depth )
+  Graphics.setColorDepth( depth or 1.0 )
   Graphics.drawTile( top, x, y )
   for ys = y+8, y+h-9, 8 do
     Graphics.drawTile( tile, x, ys )
@@ -259,6 +264,8 @@ TestState.map = {
 --  -1,  0 B --  0,  0 * --  1,  0 C
 
 TestState.checkBlocks = {
+  { -2, -2, "I" };
+  {  2, -2, "J" };
   { -1, -2, "G" };
   {  1, -2, "H" };
   { -1, -1, "E" };
@@ -279,6 +286,7 @@ function TestState:init()
   self.x = math.floor(#self.map[1]/2)
   self.y = math.floor(#self.map/2)
   self.d = "N"
+  self.xOffset = 0
 end
 
 debug = function( ... )
@@ -299,7 +307,15 @@ function TestState:trans( check, dir )
 end
 
 function TestState:draw()
-  love.graphics.setColor( 0, 224, 0 )
+  self:draw3dView()
+  love.graphics.setColor( 0, 0, 128, 255 )
+  love.graphics.rectangle("fill", 160, 0, 80, 160)
+  Graphics.text( 168,  8, WHITE, string.format("%i,%i", self.x, self.y) )
+  Graphics.text( 168, 16, WHITE, self.d )
+  self:drawMiniMap()
+end
+
+function TestState:draw3dView()
   for _, check in ipairs( self.checkBlocks ) do
     local x, y = self:trans( check, self.d )
     local id = self:get(x, y)
@@ -307,47 +323,67 @@ function TestState:draw()
       self:drawWall( id, check[3] )
     end
   end
-  love.graphics.setColor( 0, 0, 0, 128 )
-  Graphics.text( 160,  8, WHITE, string.format("%i, %i", self.x, self.y) )
-  Graphics.text( 160, 16, WHITE, self.d )
 end
 
 function TestState:drawWall( id, position )
+  local x = self.xOffset or 0
   if position == "A" then
-    Graphics.drawTiledRectangle( 1, 16, 16, 128, 128 )
+    Graphics.drawTiledRectangle( 1, x+16, 16, 128, 128, 0.8 )
   elseif position == "B" then
-    Graphics.drawCappedColumn( 1, 2, 4, 0, 0, 160 )
-    Graphics.drawCappedColumn( 1, 2, 4, 8, 8, 144 )
+    Graphics.drawCappedColumn( 1, 2, 4, x+0, 0, 160, 1.0 )
+    Graphics.drawCappedColumn( 1, 2, 4, x+8, 8, 144, 0.9 )
   elseif position == "C" then
-    Graphics.drawCappedColumn( 1, 3, 5, 144, 8, 144 )
-    Graphics.drawCappedColumn( 1, 3, 5, 152, 0, 160 )
+    Graphics.drawCappedColumn( 1, 3, 5, x+152, 0, 160, 1.0 )
+    Graphics.drawCappedColumn( 1, 3, 5, x+144, 8, 144, 0.9 )
   elseif position == "D" then
-    Graphics.drawTiledRectangle( 1, 48, 48, 64, 64 )
+    Graphics.drawTiledRectangle( 1, x+48, 48, 64, 64, 0.4 )
   elseif position == "E" then
-    Graphics.drawTiledRectangle( 1, 0, 16, 16, 128 )
-    Graphics.drawCappedColumn( 1, 2, 4, 16, 16, 128 )
-    Graphics.drawCappedColumn( 1, 2, 4, 24, 24, 112 )
-    Graphics.drawCappedColumn( 1, 2, 4, 32, 32, 96 )
-    Graphics.drawCappedColumn( 1, 2, 4, 40, 40, 80 )
+    Graphics.drawTiledRectangle( 1, x+0, 16, 16, 128, 0.8 )
+    Graphics.drawCappedColumn( 1, 2, 4, x+16, 16, 128, 0.7 )
+    Graphics.drawCappedColumn( 1, 2, 4, x+24, 24, 112, 0.6 )
+    Graphics.drawCappedColumn( 1, 2, 4, x+32, 32, 96, 0.5 )
+    Graphics.drawCappedColumn( 1, 2, 4, x+40, 40, 80, 0.4 )
   elseif position == "F" then
-    Graphics.drawTiledRectangle( 1, 144, 16, 16, 128 )
-    Graphics.drawCappedColumn( 1, 3, 5, 112, 40, 80 )
-    Graphics.drawCappedColumn( 1, 3, 5, 120, 32, 96 )
-    Graphics.drawCappedColumn( 1, 3, 5, 128, 24, 112 )
-    Graphics.drawCappedColumn( 1, 3, 5, 136, 16, 128 )
+    Graphics.drawTiledRectangle( 1, x+144, 16, 16, 128, 0.8 )
+    Graphics.drawCappedColumn( 1, 3, 5, x+136, 16, 128, 0.7 )
+    Graphics.drawCappedColumn( 1, 3, 5, x+128, 24, 112, 0.6 )
+    Graphics.drawCappedColumn( 1, 3, 5, x+120, 32, 96, 0.5 )
+    Graphics.drawCappedColumn( 1, 3, 5, x+112, 40, 80, 0.4 )
   elseif position == "G" then
-    Graphics.drawTiledRectangle( 1, 0, 48, 48, 64 )
-    Graphics.drawCappedColumn( 1, 2, 4, 48, 48, 64 )
-    Graphics.drawCappedColumn( 1, 2, 4, 56, 56, 48 )
-    Graphics.drawCappedColumn( 1, 2, 4, 64, 64, 32 )
-    Graphics.drawCappedColumn( 1, 2, 4, 72, 72, 16 )
+    Graphics.drawTiledRectangle( 1, x+0, 48, 48, 64, 0.4 )
+    Graphics.drawCappedColumn( 1, 2, 4, x+48, 48, 64, 0.3 )
+    Graphics.drawCappedColumn( 1, 2, 4, x+56, 56, 48, 0.2 )
+    Graphics.drawCappedColumn( 1, 2, 4, x+64, 64, 32, 0.1 )
+    Graphics.drawCappedColumn( 1, 2, 4, x+72, 72, 16, 0.0 )
   elseif position == "H" then
-    Graphics.drawTiledRectangle( 1, 112, 48, 48, 64 )
-    Graphics.drawCappedColumn( 1, 3, 5, 80, 72, 16 )
-    Graphics.drawCappedColumn( 1, 3, 5, 88, 64, 32 )
-    Graphics.drawCappedColumn( 1, 3, 5, 96, 56, 48 )
-    Graphics.drawCappedColumn( 1, 3, 5, 104, 48, 64 )
+    Graphics.drawTiledRectangle( 1, x+112, 48, 48, 64, 0.4 )
+    Graphics.drawCappedColumn( 1, 3, 5, x+104, 48, 64, 0.3 )
+    Graphics.drawCappedColumn( 1, 3, 5, x+96, 56, 48, 0.2 )
+    Graphics.drawCappedColumn( 1, 3, 5, x+88, 64, 32, 0.1 )
+    Graphics.drawCappedColumn( 1, 3, 5, x+80, 72, 16, 0.0 )
+  elseif position == "I" then
+    Graphics.drawCappedColumn( 1, 2, 4, x+0, 48, 64, 0.3 )
+    Graphics.drawCappedColumn( 1, 2, 4, x+8, 56, 48, 0.2 )
+    Graphics.drawCappedColumn( 1, 2, 4, x+16, 64, 32, 0.1 )
+    Graphics.drawCappedColumn( 1, 2, 4, x+24, 72, 16, 0.0 )
+  elseif position == "J" then
+    Graphics.drawCappedColumn( 1, 3, 5, x+152, 48, 64, 0.3 )
+    Graphics.drawCappedColumn( 1, 3, 5, x+144, 56, 48, 0.2 )
+    Graphics.drawCappedColumn( 1, 3, 5, x+136, 64, 32, 0.1 )
+    Graphics.drawCappedColumn( 1, 3, 5, x+128, 72, 16, 0.0 )
   end
+end
+
+function TestState:drawMiniMap()
+  for y = -2, 2 do
+    for x = -2, 2 do
+      local cell = self:get( self.x + x, self.y + y )
+      if cell ~= 0 then
+        Graphics.drawTile( cell, 168+(x+2)*8, 80+(y+2)*8 )
+      end
+    end
+  end
+  Graphics.text( 184, 96, WHITE, self.d )
 end
 
 function TestState:update(dt)
@@ -387,6 +423,10 @@ function love.update(dt)
   elseif keypress["2"]==1 then Graphics.changeScale(2)
   elseif keypress["3"]==1 then Graphics.changeScale(3)
   elseif keypress["4"]==1 then Graphics.changeScale(4)
+  elseif keypress["5"]==1 then Graphics.changeScale(5)
+  elseif keypress["6"]==1 then Graphics.changeScale(6)
+  elseif keypress["7"]==1 then Graphics.changeScale(7)
+  elseif keypress["8"]==1 then Graphics.changeScale(8)
   end
   StateMachine.update(dt)
   Sound.update()
